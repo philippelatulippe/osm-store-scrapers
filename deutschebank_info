@@ -1,0 +1,17 @@
+City list:
+https://secure.deutsche-bank.de/cc/locationsfinder/en/xml.do?type=cities&country=1588421523&_=
+
+Branch list for city:
+https://secure.deutsche-bank.de/cc/locationsfinder/en/xml.do?type=branches&country=1588421523&city=1953528846&_=
+
+Branch:
+A pile of html nested in XML comes back!
+https://secure.deutsche-bank.de/cc/locationsfinder/en/xml.do?type=division&id=72585&_=
+
+But banks and ATMs have diff hours.  It is suggested to tag ATMs and banks
+separately, but I'm not sure that this is commonly done.
+
+Some branches have different hours for different offices (regular bank vs
+business vs wealth management)
+
+Some banks have many SWIFT codes

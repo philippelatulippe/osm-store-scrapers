@@ -29,13 +29,7 @@ sql.execute("CREATE TABLE IF NOT EXISTS BranchInfo(id TEXT, detail TEXT, "
             "value TEXT)")
 
 
-def scrape_branch_info(branch_id):
-    info("Scraping branch ID " + branch_id)
-
-    req_branch = urllib.request.urlopen(url_branch % branch_id)
-    data_branch = req_branch.read().decode('utf-8')
-    xml_branch = BeautifulSoup(data_branch,features="xml")
-
+def scrape_branch_info(xml_branch, branch_id):
     element_branch = xml_branch.find_all("element")
     if len(element_branch) > 0 :
         html_branch = BeautifulSoup(element_branch[0].getText())
@@ -67,7 +61,7 @@ def scrape_branch_info(branch_id):
                 right_text = right.decode_contents()
             else:
                 for string in right.stripped_strings:
-                    right_text = right_text + string.replace("\u00A0"," ") + "\n"
+                    right_text = right_text + string.replace("\u00A0"," ")+"\n"
 
             info(right_text)
 
@@ -75,18 +69,61 @@ def scrape_branch_info(branch_id):
                 collecting_data = True
                 cursor.execute("INSERT INTO BranchInfo VALUES(?,?,?)",
                                 (branch_id, left_text, right_text));
+                sql.commit()
 
             info()
         info(")")
 
-            
+      
+
+def parse_branches(xml_branches):
+        branches_ids = xml_branches.find_all("value")
+        
+        for branch_node in branches_ids:
+            branch_id = branch_node.getText()
+            info("branch: "+branch_id)
+
+            fetch_and_process(url_branch % branch_id, "division", branch_id)
+
+            time.sleep(0.9)
+                
+
+def parse_cities(xml_cities):
+
+    city_ids = xml_cities.find_all("value")
+
+    for city_node in city_ids:
+        city_id = city_node.getText()
+
+        info("-> city "+city_id)
+
+        fetch_and_process(url_branches % (country_id, city_id), "branches",
+                          "city"+city_id)
+
+        time.sleep(0.4)
 
 
-##complex example
-#scrape_branch_info("73222")
-#sql.commit()
-#sql.close()    
-#exit()
+def fetch_and_process(url, assumed_type, branch_id="err"):
+    req_cities = urllib.request.urlopen(url)
+    data_cities = req_cities.read().decode('utf-8')
+    xml_cities = BeautifulSoup(data_cities,features="xml")
+
+    result_type_tags = xml_cities.select("data > type")
+    if len(result_type_tags) > 0:
+        result_type = result_type_tags[0].string
+        info("Result of type "+result_type)
+    else:
+        result_type = assumed_type
+        info("Result type missing, assuming "+result_type)
+    
+    if result_type == "cities":
+        parse_cities(xml_cities)
+    elif result_type == "branches":
+        parse_branches(xml_cities)
+    elif result_type == "division":
+        scrape_branch_info(xml_cities, branch_id)
+
+
 
 req_countries = urllib.request.urlopen(url_countries)
 data_countries = req_countries.read().decode('utf-8')
@@ -99,32 +136,9 @@ for country_node in country_ids:
     
     info("Country: "+country_id)
 
-    req_cities = urllib.request.urlopen(url_cities % country_id)
-    data_cities = req_cities.read().decode('utf-8')
-    xml_cities = BeautifulSoup(data_cities,features="xml")
-    
-    city_ids = xml_cities.find_all("value")
+    #At every step, any type of result can be returned.
+    #If a country only has one branch, it will return a "division"
 
-    for city_node in city_ids:
-        city_id = city_node.getText()
-
-        info("-> city "+city_id)
-
-        req_branches = urllib.request.urlopen(url_branches % (country_id, 
-                                              city_id))
-        data_branches = req_branches.read().decode('utf-8')
-        xml_branches = BeautifulSoup(data_branches,features="xml")
-        
-        branches_ids = xml_branches.find_all("value")
-        
-        for branch_node in branches_ids:
-            branch_id = branch_node.getText()
-            info("branch: "+branch_id)
-            scrape_branch_info(branch_id)
-            time.sleep(0.9)
-            
-        time.sleep(0.4)
-
-
+    fetch_and_process(url_cities % country_id, "cities", "country"+country_id)
 
     time.sleep(0.4)

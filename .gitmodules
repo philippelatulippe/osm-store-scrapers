@@ -1,0 +1,3 @@
+[submodule "python-nominatim"]
+	path = python-nominatim
+	url = git@github.com:philippelatulippe/python-nominatim.git

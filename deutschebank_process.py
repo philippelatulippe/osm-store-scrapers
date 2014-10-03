@@ -1,7 +1,11 @@
-import nominatim
 import sqlite3
 from bs4 import BeautifulSoup
 from time import sleep
+import sys
+from pprint import pformat
+
+sys.path.insert(0,"./python-nominatim")
+from nominatim import Nominatim
 
 sql = sqlite3.connect("deutschebank.sqlite3")
 sql.row_factory = sqlite3.Row
@@ -11,7 +15,7 @@ sql.execute("CREATE TABLE IF NOT EXISTS BranchPOI(id TEXT, place_id TEXT,"
             "data TEXT)")
 
 
-nom = nominatim.Nominatim()
+nom = Nominatim()
 
 
 branches = cursor.execute("SELECT id FROM BranchInfo GROUP BY id")
@@ -48,17 +52,35 @@ for branch_id_row in branches:
             continue
 
         places = nom.query(address);
+        bank_place = None
 
         for place in places:
             if place["type"].find("bank") >= 0:
-                print "found a bank"
+                print("found a bank")
             else:
+                #print("not a bank")
                 continue
 
-            if place["display_name"].find("Deutsche Bank")
+            if place["display_name"].lower().find("Deutsche Bank".lower())>= 0:
+                print("It's Deutsche Bank")
+                bank_place = place
+            else:
+                print("not Deutsche Bank")
+                continue
+    
 
-        sql.execute("REPLACE INTO BranchPOI VALUES(?,?,?) WHERE id = ?",
-                    (branch_id, place_id, nomdata, branch_id))
+        place_id = None
+        if bank_place:
+            place_id = bank_place["place_id"]
+
+        if existing_data:
+            sql.execute("UPDATE BranchPOI SET place_id=?, data=? WHERE id = ?",
+                        (place_id, pformat(places), branch_id))
+        else:
+            sql.execute("INSERT INTO BranchPOI VALUES(?,?,?)",
+                        (branch_id, place_id, pformat(places)))
+        sql.commit()
+
         
         print("==========================================")
         sleep(1.0)
